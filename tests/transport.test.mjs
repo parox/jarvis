@@ -5,7 +5,7 @@ import { once } from 'node:events'
 import { request } from 'node:http'
 import { createServer as createViteServer } from 'vite'
 import { WebSocket } from 'ws'
-import { realpathSync, readFileSync, writeFileSync, symlinkSync, rmSync, mkdtempSync } from 'node:fs'
+import { readFileSync, writeFileSync, symlinkSync, rmSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { bridgeToken, PROJECT_ROOT, WORKSPACE } from '../bridge/security.mjs'
@@ -31,7 +31,7 @@ function refusedWs(url, headers) {
   })
 }
 
-test('real bridge and Vite proxy enforce HTTP/WS policy without invoking Claude', { timeout: 25000 }, async (t) => {
+test('real bridge and Vite proxy enforce HTTP/WS policy without making provider requests', { timeout: 25000 }, async (t) => {
   const previous = { PORT: process.env.PORT, JARVIS_BRIDGE_PORT: process.env.JARVIS_BRIDGE_PORT }
   process.env.PORT = String(facePort)
   process.env.JARVIS_BRIDGE_PORT = String(bridgePort)
@@ -101,13 +101,20 @@ test('real bridge and Vite proxy enforce HTTP/WS policy without invoking Claude'
   }
   assert.equal(frames.find((x) => x.type === 'done')?.text, 'stub: transport test')
   const policy = messages.find((x) => x.type === 'policy')
-  assert.deepEqual(policy.tools, [])
-  assert.equal(policy.strict, true)
-  assert.equal(policy.persist, false)
-  assert.equal(policy.cwd, realpathSync(WORKSPACE))
-  assert.deepEqual(policy.servers.sort(), ['jarvis', 'jarvis_ui'])
-  assert.equal(messages.find((x) => x.type === 'hook')?.decision, 'deny')
-  assert.equal(readFileSync(join(PROJECT_ROOT, 'src/lib/anthropic.ts'), 'utf8').includes('dangerouslyAllowBrowser'), false)
+  assert.equal(policy.store, false)
+  assert.equal(policy.model, 'gpt-6-astra')
+  assert.ok(policy.tools.includes('mcp__jarvis__blade'))
+  assert.ok(policy.tools.includes('mcp__jarvis_ui__ui_reset'))
+  assert.ok(policy.tools.every((name) => name.startsWith('mcp__jarvis__') || name.startsWith('mcp__jarvis_ui__')))
+  assert.equal(readFileSync(join(PROJECT_ROOT, 'src/lib/types.ts'), 'utf8').includes('dangerouslyAllowBrowser'), false)
+  ws.send(JSON.stringify({ type: 'ask', text: 'interrupt me', id: 'old' }))
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  ws.send(JSON.stringify({ type: 'interrupt' }))
+  ws.send(JSON.stringify({ type: 'ask', text: 'next', id: 'new' }))
+  const deadline = Date.now() + 3000
+  while (!frames.some((x) => x.type === 'done' && x.ask === 'new') && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 20))
+  assert.equal(frames.find((x) => x.type === 'done' && x.ask === 'new')?.text, 'stub: next')
+  assert.equal(frames.some((x) => x.ask === 'old' && ['text', 'done'].includes(x.type)), false)
   ws.close()
 })
 

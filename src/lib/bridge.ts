@@ -1,4 +1,4 @@
-import type { AskHandlers } from './anthropic'
+import type { AskHandlers } from './types'
 import type { Blade, Panel } from '../store'
 import { BRIDGE_WS_URL } from '../config'
 
@@ -9,7 +9,7 @@ import { BRIDGE_WS_URL } from '../config'
  * brain is behind it. The difference is what's reachable: this one runs on your
  * machine; only explicitly selected project tools are available.
  *
- * The socket is the session. The bridge holds one Claude Agent SDK query per
+ * The socket is the session. The bridge holds one OpenAI agent per
  * connection and the whole conversation lives inside it, so a dropped socket
  * silently wipes JARVIS's memory of the exchange while the transcript on screen
  * still shows it. That is why the reconnect below is loud rather than
@@ -169,9 +169,7 @@ function dispatch(ws: WebSocket) {
     }
 
     if (msg.type === 'ready') {
-      // The bridge announces immediately on connect from Claude Code's config,
-      // then again with live status once the agent initialises. Keep listening
-      // so the later, more accurate list wins.
+      // The backend reports only connected, explicitly selected MCP tools.
       servers = (msg.servers ?? [])
         .map((s) => (typeof s === 'string' ? s : (s.name ?? '')))
         .filter(Boolean)

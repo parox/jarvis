@@ -1,12 +1,8 @@
-// Test-only replacement: run the real bridge without login, network model calls
-// or configured MCP subprocesses. Actual SDK tool/server constructors are used.
+// Replace only the OpenAI network client. Exercise the real agent and MCP code.
 export async function load(url, context, nextLoad) {
   const result = await nextLoad(url, context)
-  if (url.endsWith('/bridge/server.mjs')) {
-    return { ...result, source: String(result.source).replace(
-      "import { query } from '@anthropic-ai/claude-agent-sdk'",
-      "import { query } from '../tests/stub-agent.mjs'",
-    ) }
-  }
+  if (url.endsWith('/bridge/openai.mjs')) return { ...result, source: String(result.source).replace(
+    "import OpenAI from 'openai'", "import OpenAI from '../tests/stub-agent.mjs'",
+  ) }
   return result
 }

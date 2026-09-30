@@ -1,5 +1,5 @@
 import * as bridge from './bridge'
-import type { AskHandlers, Msg } from './anthropic'
+import type { AskHandlers, Msg } from './types'
 import type { Blade, Panel } from '../store'
 
 export type { AskHandlers, Msg }

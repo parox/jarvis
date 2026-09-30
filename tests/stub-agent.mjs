@@ -1,22 +1,15 @@
-export function query({ prompt, options }) {
-  let stopped = false
-  process.send?.({
-    type: 'policy', tools: options.tools, strict: options.strictMcpConfig,
-    persist: options.persistSession, cwd: options.cwd,
-    servers: Object.keys(options.mcpServers),
-  })
-  return {
-    async *[Symbol.asyncIterator]() {
-      const input = { hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: {} }
-      const result = await options.hooks.PreToolUse[0].hooks[0](input)
-      process.send?.({ type: 'hook', decision: result.hookSpecificOutput.permissionDecision })
-      yield { type: 'system', subtype: 'init', mcp_servers: Object.keys(options.mcpServers).map((name) => ({ name, status: 'connected' })) }
-      for await (const message of prompt) {
-        if (stopped) break
-        yield { type: 'result', subtype: 'success', result: `stub: ${message.message.content}` }
-      }
-    },
-    close() { stopped = true },
-    async interrupt() {},
-  }
+export default class FakeOpenAI {
+  responses = { create: async (request, { signal }) => {
+    process.send?.({ type: 'policy', tools: request.tools.map((t) => t.name), store: request.store, model: request.model })
+    const text = request.input.at(-1).content
+    return (async function* () {
+      if (text === 'interrupt me') await new Promise((resolve, reject) => {
+        const timer = setTimeout(resolve, 500)
+        signal.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason) }, { once: true })
+      })
+      signal.throwIfAborted()
+      yield { type: 'response.output_text.delta', delta: `stub: ${text}` }
+      yield { type: 'response.completed', response: { status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: `stub: ${text}`, annotations: [] }] }] } }
+    })()
+  } }
 }
