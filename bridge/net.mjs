@@ -157,6 +157,7 @@ export function vetTarget(raw) {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw proxyError(400, 'absolute http(s) url required')
   }
+  if (url.username || url.password) throw proxyError(400, 'URL credentials are forbidden')
   if (!url.hostname) throw proxyError(400, 'absolute http(s) url required')
   if (BLOCKED_HOSTNAME.test(url.hostname)) throw proxyError(403, 'blocked host')
   // An IP literal never reaches DNS in any meaningful sense, so judge it here —

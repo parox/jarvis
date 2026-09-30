@@ -317,7 +317,7 @@ argument. You know those things. Overrule it whenever you have reason to.`
  * @param {(panel: object) => void} emit - pushes the panel to the browser
  * @param {(blade: object) => void} emitBlade - pushes a blade to the browser
  */
-export function displayServer(emit, emitBlade) {
+export function displayServer(emit, emitBlade, { camera = false } = {}) {
   return createSdkMcpServer({
     name: 'jarvis',
     version: '1.0.0',
@@ -379,6 +379,7 @@ export function displayServer(emit, emitBlade) {
 
       tool('blade', BLADE_DESCRIPTION, bladeSchema, async (args) => {
         const kind = args.kind
+        if (kind === 'camera' && !camera) return refuse('Camera access is disabled by the local policy.')
         const url = String(args.url ?? '').trim()
         const images = Array.isArray(args.images) ? args.images.filter(Boolean) : []
 
@@ -402,7 +403,7 @@ export function displayServer(emit, emitBlade) {
           url: url || undefined,
           images: images.length ? images.slice(0, 8) : undefined,
           html: args.html || undefined,
-          mode: args.mode ?? 'reader',
+          mode: 'reader',
           // A reading column for anything meant to be read, a broad frame for
           // anything meant to be looked at. Getting this wrong is the difference
           // between an article you can follow and one in a letterbox.

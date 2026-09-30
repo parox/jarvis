@@ -6,8 +6,7 @@
  * both as children, tags their output so you can tell them apart, and shuts
  * them down together on Ctrl-C — no extra dependency, just Node.
  *
- * Pass --writes to allow JARVIS to take real actions (drive the phone, the
- * browser, send things): `npm start -- --writes`.
+ * Unrestricted writes are disabled. See SECURITY.md for explicit integrations.
  */
 
 import { spawn } from 'node:child_process'
@@ -44,7 +43,7 @@ function vendorWasm() {
   }
 }
 
-const writes = process.argv.includes('--writes')
+if (process.argv.includes('--writes')) throw new Error('Unrestricted writes are disabled in this fork')
 
 // A dim label per process, so the interleaved logs stay readable.
 const paint = (tag, colour) => (line) =>
@@ -92,24 +91,7 @@ function shutdown(code) {
 process.on('SIGINT', () => shutdown(0))
 process.on('SIGTERM', () => shutdown(0))
 
-/**
- * Tell the bridge which port the face will actually be on.
- *
- * The bridge only trusts WebSocket origins on localhost:5173-5199 and
- * 4173-4199, which is the right default — a socket that any local page can open
- * is a socket that drives every MCP server on the machine. But a launcher that
- * assigns a port outside that range produces the single most confusing failure
- * this project has: the interface loads, the reactor spins, the microphone
- * hears you, and the brain answers nothing, because the handshake is being 403'd
- * somewhere neither half reports. Passing the port through closes that gap
- * without widening what the bridge trusts by default.
- */
-const port = process.env.PORT
-const bridgeEnv = writes ? { JARVIS_ALLOW_WRITES: '1' } : {}
-if (port) {
-  bridgeEnv.JARVIS_ALLOWED_ORIGINS = `http://localhost:${port},http://127.0.0.1:${port}`
-  console.log(`  serving the face on port ${port}; the bridge will accept it.\n`)
-}
+const bridgeEnv = {}
 
 vendorWasm()
 

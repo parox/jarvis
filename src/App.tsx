@@ -10,7 +10,6 @@ import { createSpeaker, cycleVoice, currentVoiceName } from './lib/tts'
 import * as sfx from './lib/sfx'
 import * as music from './lib/music'
 import * as hands from './lib/hands'
-import { listenForClap } from './lib/clap'
 import * as camera from './lib/camera'
 import * as kokoro from './lib/kokoro'
 import { TTS_ENGINE } from './config'
@@ -31,7 +30,6 @@ import {
 } from './lib/brain'
 import { startAnalyser, micLevel } from './lib/audio'
 import { probeCapabilities } from './lib/capabilities'
-import { env } from './config'
 
 /**
  * The conversation.
@@ -71,7 +69,6 @@ const LEADING_NAME = new RegExp(`^(?:hey|hi|ok|okay|yo)?\\s*${NAME}\\b[\\s,.:!?-
 
 export default function App() {
   const store = useStore
-  const phase = useStore((s) => s.phase)
   const history = useRef<Msg[]>([])
   const speaker = useRef<ReturnType<typeof createSpeaker> | null>(null)
   const voice = useRef<Voice | null>(null)
@@ -463,12 +460,6 @@ export default function App() {
     })
     const warming = warm().catch((err: Error) => s.setError(err.message))
 
-    if (!usingBridge && !env.anthropicKey) {
-      s.setError(
-        'No Anthropic API key — copy .env.example to .env.local and set VITE_ANTHROPIC_API_KEY.',
-      )
-    }
-
     // Pull the neural voice down during the boot sequence so the first
     // "Hey Jarvis" isn't waiting on an 86MB download. Deliberately not awaited
     // — if it's slow, JARVIS comes up on the system voice and swaps over the
@@ -526,37 +517,6 @@ export default function App() {
 
     store.getState().setPhase('dormant')
   }
-
-  // -- clap to start --------------------------------------------------------
-
-  /**
-   * A clap brings him up, as an alternative to the button.
-   *
-   * Only while the ignition screen is showing, and torn down the moment he
-   * boots — the microphone is about to belong to the voice loop, and two
-   * analysers arguing over the same stream is how you get an assistant that
-   * hears half of what you say.
-   *
-   * Deliberately silent about failure. If the microphone is refused, or has not
-   * been granted yet, the button is still right there; announcing an error
-   * about a feature nobody asked for would be worse than quietly doing without.
-   */
-  useEffect(() => {
-    if (phase !== 'offline') return
-    let live: { stop: () => void } | null = null
-    let gone = false
-    void listenForClap(() => {
-      if (!gone) void powerOn()
-    }).then((l) => {
-      if (gone) l.stop()
-      else live = l
-    })
-    return () => {
-      gone = true
-      live?.stop()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase])
 
   // -- level pump + keys ----------------------------------------------------
 

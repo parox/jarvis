@@ -400,7 +400,9 @@ export async function renderPage(url, mode, bridgeOrigin) {
     throw proxyError(415, `not a web page (got ${page.type || 'nothing'})`)
   }
 
-  const live = mode === 'live'
+  // Reader mode only: publisher resources must not bypass the guarded proxy.
+  const live = false
+  void mode
   const nonce = randomBytes(16).toString('base64')
   const shim = `<script nonce="${nonce}">${SCROLL_SHIM}</script>`
   const rendered = live
@@ -433,7 +435,7 @@ export async function renderPage(url, mode, bridgeOrigin) {
       'content-type': 'text/html; charset=utf-8',
       'content-security-policy': csp,
       'x-content-type-options': 'nosniff',
-      referrerpolicy: 'no-referrer',
+      'referrer-policy': 'no-referrer',
       /**
        * Not cached, deliberately.
        *

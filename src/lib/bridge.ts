@@ -7,7 +7,7 @@ import { BRIDGE_WS_URL } from '../config'
  *
  * Same `ask()` shape as the browser-direct path, so App.tsx doesn't care which
  * brain is behind it. The difference is what's reachable: this one runs on your
- * machine, so every MCP server in your Claude Code config is in play.
+ * machine; only explicitly selected project tools are available.
  *
  * The socket is the session. The bridge holds one Claude Agent SDK query per
  * connection and the whole conversation lives inside it, so a dropped socket
@@ -266,9 +266,7 @@ function connect(): Promise<WebSocket> {
       settle(
         new Error(
           `Cannot reach the bridge at ${BRIDGE_WS_URL}. Either it is not ` +
-            'running (start it with `npm start`), or this page is on a port it ' +
-            `refuses — it accepts localhost:5173-5199 and 4173-4199, and this ` +
-            `page is on ${location.port || '80'}.`,
+            'running (start it with `npm start`), or the local proxy refused this page.',
         ),
       )
     }
