@@ -1,4 +1,4 @@
-import { getMic } from './audio'
+import { getMic, microphoneError } from './audio'
 
 /**
  * Voice-activity detection and segment capture.
@@ -104,11 +104,7 @@ export async function startVad(h: VadHandlers): Promise<Vad> {
   try {
     stream = await getMic()
   } catch (err) {
-    h.onError(
-      err instanceof DOMException && err.name === 'NotAllowedError'
-        ? 'Microphone access denied — voice input is unavailable.'
-        : 'No microphone available.',
-    )
+    h.onError(microphoneError(err))
     return { stop: () => {}, setGuard: () => {}, live: () => false, meter: () => ({ energy: 0, floor: 0, threshold: 0, speaking: false }) }
   }
 

@@ -1,5 +1,5 @@
 import { BRIDGE_HTTP_URL } from '../config'
-import { getMic } from './audio'
+import { getMic, microphoneError } from './audio'
 import { speakingNow, speakingSince } from './tts'
 import { startVad, type Vad } from './vad'
 import { caps } from './capabilities'
@@ -390,13 +390,17 @@ export async function startVoice(h: VoiceHandlers): Promise<Voice> {
   try {
     await getMic()
   } catch (err) {
-    diag.lastError = 'mic'
-    h.onError(
-      err instanceof DOMException && err.name === 'NotAllowedError'
-        ? 'Microphone access denied — voice input is unavailable.'
-        : 'No microphone available.',
-    )
-    return { stop: () => {}, live: () => false }
+    const name = err && typeof err === 'object' && 'name' in err ? String(err.name) : 'UnknownError'
+    diag.lastError = name
+    console.warn('[jarvis] microphone capture failed:', name)
+    // Browser SpeechRecognition owns its capture pipeline. An analyser stream
+    // failing is not proof that browser recognition cannot start. An explicit
+    // permission denial remains a stop; no permission bypass is attempted.
+    if (caps().stt || name === 'NotAllowedError' || name === 'SecurityError') {
+      h.onError(microphoneError(err))
+      return { stop: () => {}, live: () => false }
+    }
+
   }
   diag.engine = caps().stt ? 'elevenlabs' : 'browser'
   return caps().stt ? startElevenVoice(h) : startBrowserVoice(h)
@@ -773,7 +777,13 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
       if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
         stopped = true
         diag.running = false
-        h.onError('Microphone access was refused — voice input is unavailable.')
+        h.onError(ev.error === 'service-not-allowed'
+          ? 'Chrome speech recognition is blocked. Check browser speech-service settings or configure a supported speech provider.'
+          : microphoneError(new DOMException('', 'NotAllowedError')))
+      } else if (ev.error === 'audio-capture') {
+        stopped = true
+        diag.running = false
+        h.onError(microphoneError(new DOMException('', 'NotReadableError')))
       }
     }
     rec.onend = () => {

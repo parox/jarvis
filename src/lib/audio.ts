@@ -9,16 +9,36 @@ let ctx: AudioContext | null = null
 let analyser: AnalyserNode | null = null
 let buf: Uint8Array | null = null
 
+let opening: Promise<MediaStream> | null = null
+
+/** Translate capture failures without calling every error a missing device. */
+export function microphoneError(err: unknown): string {
+  const name = err && typeof err === 'object' && 'name' in err ? String(err.name) : ''
+  switch (name) {
+    case 'NotAllowedError': case 'SecurityError':
+      return 'Microphone access blocked. Allow it for this site and for Chrome in macOS System Settings → Privacy & Security → Microphone.'
+    case 'NotFoundError':
+      return 'No audio input detected. Select a working microphone in macOS System Settings → Sound → Input.'
+    case 'NotReadableError': case 'AbortError':
+      return 'Microphone could not start. Check the selected input device, close other recording apps, then reload.'
+    case 'NotSupportedError':
+      return 'Audio capture is unavailable here. Open http://127.0.0.1:5173 directly in Chrome or Edge.'
+    case 'OverconstrainedError':
+      return 'The selected microphone does not support the requested audio settings. Select another input device.'
+    default:
+      return `Microphone capture failed${name ? ` (${name})` : ''}. Check browser and system microphone permissions.`
+  }
+}
+
 export async function getMic(): Promise<MediaStream> {
-  if (stream) return stream
-  stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-    },
-  })
-  return stream
+  if (stream?.getAudioTracks().some((track) => track.readyState === 'live')) return stream
+  stream = null
+  if (!navigator.mediaDevices?.getUserMedia) throw new DOMException('Audio capture unsupported', 'NotSupportedError')
+  // Share concurrent requests; discard stopped streams so a retry can recover.
+  if (!opening) opening = navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  }).then((next) => { stream = next; return next }).finally(() => { opening = null })
+  return opening
 }
 
 export async function startAnalyser(): Promise<void> {
