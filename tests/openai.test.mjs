@@ -86,3 +86,13 @@ test('successful tool results and encrypted reasoning are replayed together', as
   assert.equal(f.requests[1].input[3].call_id, 'c1')
   assert.equal(f.requests[1].input[3].output[0].text, 'ok')
 })
+
+
+test('missing backend API key does not break initialization or expose credentials', async (t) => {
+  const previous = process.env.OPENAI_API_KEY
+  delete process.env.OPENAI_API_KEY
+  t.after(() => { if (previous === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previous })
+  const agent = new OpenAIAgent({ model: 'test', effort: 'medium', instructions: 'test', registry: new Map(), allowed: () => true })
+  await assert.rejects(agent.run('test', () => {}, new AbortController().signal), { code: 'missing_api_key' })
+  assert.deepEqual(agent.history, [])
+})

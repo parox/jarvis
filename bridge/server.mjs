@@ -695,7 +695,7 @@ wss.on('connection', (socket) => {
     return agent
   })
   // Handle initialization rejection immediately, including when nobody asks.
-  ready.catch(() => { send({ type: 'error', message: 'OpenAI or MCP configuration failed. Check the backend configuration.' }); connections?.close(); socket.close() })
+  ready.catch(() => { send({ type: 'error', message: 'MCP initialization failed. Check the selected server configuration, then restart the bridge.' }); connections?.close() })
   socket.on('message', (raw) => {
     let msg
     try { msg = JSON.parse(raw.toString()) } catch { return }
@@ -722,7 +722,9 @@ wss.on('connection', (socket) => {
           if (!controller.signal.aborted && !closed) {
             // Provider errors can contain request details; never forward them.
             console.error('[jarvis] OpenAI turn failed:', error?.status ?? error?.name ?? 'Error')
-            emit({ type: 'error', message: 'The OpenAI request failed. Check API access, model configuration and billing.' })
+            emit({ type: 'error', message: error?.code === 'missing_api_key'
+              ? 'OPENAI_API_KEY is missing from the backend environment. Set it in the terminal running npm start, then restart the bridge.'
+              : 'The OpenAI request failed. Check API access, model configuration and billing.' })
           }
         }
       }).catch(() => {})

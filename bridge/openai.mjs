@@ -60,7 +60,7 @@ export function toolOutput(result) {
 
 export class OpenAIAgent {
   constructor({ model, effort, instructions, registry, allowed, client }) {
-    this.client = client ?? new OpenAI({ apiKey: process.env.OPENAI_API_KEY, maxRetries: 1, timeout: 60000 })
+    this.client = client ?? null
     this.model = model
     this.effort = effort
     this.instructions = instructions
@@ -69,6 +69,10 @@ export class OpenAIAgent {
     this.history = []
   }
   async run(text, emit, signal) {
+    if (!this.client) {
+      if (!process.env.OPENAI_API_KEY?.trim()) throw Object.assign(new Error('Backend API key missing'), { code: 'missing_api_key' })
+      this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY.trim(), maxRetries: 1, timeout: 60000 })
+    }
     // Commit only complete turns. Failed/interrupted tool sequences must never
     // leave orphaned call IDs in the next request.
     const input = [...this.history, { role: 'user', content: text }]

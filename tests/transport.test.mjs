@@ -43,7 +43,7 @@ test('real bridge and Vite proxy enforce HTTP/WS policy without making provider 
   const child = fork(join(PROJECT_ROOT, 'bridge/server.mjs'), [], {
     cwd: PROJECT_ROOT,
     execArgv: ['--loader', join(PROJECT_ROOT, 'tests/sdk-loader.mjs')],
-    env: { PATH: process.env.PATH, HOME: process.env.HOME, PORT: String(facePort), JARVIS_BRIDGE_PORT: String(bridgePort) },
+    env: { OPENAI_API_KEY: 'test-placeholder-not-a-real-key', PATH: process.env.PATH, HOME: process.env.HOME, PORT: String(facePort), JARVIS_BRIDGE_PORT: String(bridgePort) },
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   })
   let stderr = ''
