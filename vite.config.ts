@@ -5,7 +5,7 @@ import { bridgeToken, frontendRequestAllowed, portNumber, PROJECT_ROOT } from '.
 
 export default defineConfig(({ command, mode }) => {
   const env = { ...loadEnv(mode, PROJECT_ROOT, ''), ...process.env }
-  const frontendOptions = new Set(['VITE_TTS_ENGINE', 'VITE_KOKORO_VOICE', 'VITE_USE_ELEVENLABS', 'VITE_PICOVOICE_ACCESS_KEY'])
+  const frontendOptions = new Set(['VITE_SPEECH_LANGUAGE', 'VITE_TTS_ENGINE', 'VITE_KOKORO_VOICE', 'VITE_USE_ELEVENLABS', 'VITE_PICOVOICE_ACCESS_KEY'])
   for (const [key, value] of Object.entries(env)) {
     if (key.startsWith('VITE_') && value && !frontendOptions.has(key)) {
       throw new Error(`Unsupported frontend variable ${key}; keep service credentials on the bridge`)

@@ -1,4 +1,5 @@
-import { BRIDGE_HTTP_URL } from '../config'
+import { speechLanguage, speechServiceError } from './speech'
+import { BRIDGE_HTTP_URL, SPEECH_LANGUAGE } from '../config'
 import { getMic, microphoneError } from './audio'
 import { speakingNow, speakingSince } from './tts'
 import { startVad, type Vad } from './vad'
@@ -334,6 +335,7 @@ function isEcho(heard: string, spoken: string): boolean {
 export const diag = {
   /** Which input engine is running: 'elevenlabs' (VAD+Scribe) or 'browser'. */
   engine: 'browser',
+  language: '',
   /** Whether the microphone pipeline is live. */
   running: false,
   /** Speech segments captured since load. */
@@ -704,12 +706,16 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
     }
     const heard = `${settled}${fresh} ${interim}`.replace(/\s+/g, ' ').trim()
     if (!heard) return
+    diag.heard = heard
+    diag.heardAt = Date.now()
+    diag.lastError = ''
     if (isEcho(`${fresh} ${interim}`, speakingNow())) {
       interim = ''
       return
     }
 
     if (mode === 'wake') {
+      h.onPartial(heard)
       settled += fresh
       if (WAKE.test(heard) && Date.now() - lastWake > WAKE_DEBOUNCE) {
         lastWake = Date.now()
@@ -764,7 +770,8 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
     rec = new Ctor()
     rec.continuous = true
     rec.interimResults = true
-    rec.lang = 'en-GB'
+    rec.lang = speechLanguage(SPEECH_LANGUAGE, navigator.language)
+    diag.language = rec.lang
     rec.onstart = () => {
       running = true
       diag.running = true
@@ -774,6 +781,9 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
     rec.onresult = onResult
     rec.onerror = (ev: any) => {
       diag.lastError = String(ev.error ?? '')
+      const serviceError = speechServiceError(diag.lastError)
+      if (serviceError) h.onError(serviceError)
+      if (ev.error === 'language-not-supported') { stopped = true; diag.running = false }
       if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
         stopped = true
         diag.running = false
@@ -791,7 +801,7 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
       diag.running = false
       touch()
       rec = null
-      if (!stopped) setTimeout(spin, 80)
+      if (!stopped) setTimeout(spin, diag.lastError === 'network' ? 2000 : 80)
     }
     try {
       rec.start()

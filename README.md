@@ -44,6 +44,8 @@ Failed/interrupted turns are discarded from retained context. Context resets
 when its serialized size exceeds 250,000 characters. No price estimate is
 invented: the interface's cost field is null.
 
+Set `VITE_SPEECH_LANGUAGE=pt-BR` in `.env.local` for Portuguese browser recognition; otherwise the browser language is used. Restart Vite after changing it. Press D to see the last transcript, selected language and recognition errors.
+
 Speech remains browser/system/Kokoro or optional ElevenLabs. Migrating the
 conversation backend does not automatically change speech providers. Optional
 Chrome reading still uses the existing Claude browser extension's native

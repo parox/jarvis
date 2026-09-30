@@ -19,6 +19,7 @@ import { useStore } from '../store'
  */
 
 type VoiceDiag = {
+  language: string
   running: boolean
   sessions: number
   heard: string
@@ -117,6 +118,7 @@ export function Diagnostics() {
       <Row k="wakes" v={String(v.wakes ?? 0)} />
       <Row k="last heard" v={v.heard ? `"${v.heard}" ${ago(v.heardAt ?? 0)}` : '— nothing yet'} bad={!v.heard} />
       <Row k="last drop" v={v.dropped || '—'} bad={Boolean(v.dropped)} />
+      <Row k="language" v={v.language || '—'} />
       <Row k="error" v={v.lastError || '—'} bad={Boolean(v.lastError)} />
 
       <div className="diag-sec">SPEAKING · press T to test</div>

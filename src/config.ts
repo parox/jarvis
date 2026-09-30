@@ -46,6 +46,7 @@ function flag(name: string, raw: unknown, fallback: boolean): boolean {
 }
 
 // All API calls go through the authenticated, same-origin local proxy.
+export const SPEECH_LANGUAGE = str(import.meta.env.VITE_SPEECH_LANGUAGE)
 export const BACKEND = 'bridge' as const
 export const BRIDGE_HTTP_URL = `${window.location.origin}/bridge`
 export const BRIDGE_WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/bridge/ws`
